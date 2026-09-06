@@ -6,7 +6,7 @@ import {
   selectSubtotal,
   selectTrayVisible,
 } from '../order/orderReducer';
-import { useOrder } from '../order/useOrder';
+import { useOrder } from '../hooks/order/useOrder';
 import { useSceneNode } from '../scene/sceneNodes';
 
 const STEP =

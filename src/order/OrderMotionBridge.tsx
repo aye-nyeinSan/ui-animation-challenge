@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react';
 import { selectHasOpenOrder } from './orderReducer';
-import { useOrder } from './useOrder';
+import { useOrder } from '../hooks/order/useOrder';
 
 interface OrderMotionBridgeProps {
   readonly hasOpenOrderRef: RefObject<boolean>;

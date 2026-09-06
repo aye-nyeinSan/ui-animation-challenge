@@ -1,5 +1,5 @@
 import { use } from 'react';
-import { OrderContext, type OrderContextValue } from './orderContext';
+import { OrderContext, type OrderContextValue } from '../../order/orderContext';
 
 export function useOrder(): OrderContextValue {
   const value = use(OrderContext);

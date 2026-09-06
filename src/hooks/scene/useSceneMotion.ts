@@ -1,9 +1,9 @@
 import { useGSAP } from '@gsap/react';
 import { useEffect, useRef } from 'react';
-import { BURGER_ASPECT, MOTION } from '../motion';
-import { EASE, gsap, ScrollTrigger } from './gsapSetup';
-import { cardOffset, computeAdPose, computeMenuRun, computePlatePose, menuLead } from './layout';
-import type { SceneNodeName, SceneRegistry } from './sceneNodes';
+import { BURGER_ASPECT, MOTION } from '../../motion';
+import { EASE, gsap, ScrollTrigger } from '../../scene/gsapSetup';
+import { cardOffset, computeAdPose, computeMenuRun, computePlatePose, menuLead } from '../../scene/layout';
+import type { SceneNodeName, SceneRegistry } from '../../scene/sceneNodes';
 import type { RefObject } from 'react';
 
 export interface SceneMotionConfig {

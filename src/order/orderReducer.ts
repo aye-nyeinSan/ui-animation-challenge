@@ -1,4 +1,4 @@
-import { TAX_RATE } from '../data/menu';
+import { TAX_RATE } from "../constants/menu";
 
 export interface OrderLine {
   readonly name: string;
@@ -14,11 +14,11 @@ export interface OrderState {
 }
 
 export type OrderAction =
-  | { type: 'add'; name: string; price: number }
-  | { type: 'step'; name: string; delta: number }
-  | { type: 'clear' }
-  | { type: 'place' }
-  | { type: 'toggleTray' };
+  | { type: "add"; name: string; price: number }
+  | { type: "step"; name: string; delta: number }
+  | { type: "clear" }
+  | { type: "place" }
+  | { type: "toggleTray" };
 
 export const initialOrderState: OrderState = {
   order: [],
@@ -27,9 +27,12 @@ export const initialOrderState: OrderState = {
   receipt: [],
 };
 
-export function orderReducer(state: OrderState, action: OrderAction): OrderState {
+export function orderReducer(
+  state: OrderState,
+  action: OrderAction,
+): OrderState {
   switch (action.type) {
-    case 'add': {
+    case "add": {
       const existing = state.order.find((line) => line.name === action.name);
       const order = existing
         ? state.order.map((line) =>
@@ -38,18 +41,22 @@ export function orderReducer(state: OrderState, action: OrderAction): OrderState
         : [...state.order, { name: action.name, price: action.price, qty: 1 }];
       return { ...state, order, trayOpen: true, paid: false };
     }
-    case 'step': {
+    case "step": {
       const order = state.order
-        .map((line) => (line.name === action.name ? { ...line, qty: line.qty + action.delta } : line))
+        .map((line) =>
+          line.name === action.name
+            ? { ...line, qty: line.qty + action.delta }
+            : line,
+        )
         .filter((line) => line.qty > 0);
       return { ...state, order, trayOpen: order.length > 0, paid: false };
     }
-    case 'clear':
+    case "clear":
       return initialOrderState;
-    case 'place':
+    case "place":
       if (state.order.length === 0) return state;
       return { order: [], trayOpen: false, paid: true, receipt: state.order };
-    case 'toggleTray':
+    case "toggleTray":
       return { ...state, trayOpen: !state.trayOpen };
   }
 }
@@ -63,7 +70,10 @@ export function selectItemCount(state: OrderState): number {
 }
 
 export function selectSubtotal(state: OrderState): number {
-  return selectBilled(state).reduce((total, line) => total + line.qty * line.price, 0);
+  return selectBilled(state).reduce(
+    (total, line) => total + line.qty * line.price,
+    0,
+  );
 }
 
 export function selectTrayVisible(state: OrderState): boolean {

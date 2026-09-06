@@ -1,5 +1,5 @@
 import { useCallback, useRef, type MouseEvent } from 'react';
-import { MOTION } from '../motion';
+import { MOTION } from '../../motion';
 
 const MAX_ROTATE_X = -9;
 const MAX_ROTATE_Y = 11;

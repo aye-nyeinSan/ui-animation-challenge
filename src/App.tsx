@@ -9,11 +9,11 @@ import { Preloader } from './components/Preloader';
 import { SceneOverlays, WaterBackdrop } from './components/SceneOverlays';
 import { SidesSection } from './components/SidesSection';
 import { SiteNav } from './components/SiteNav';
-import { useMediaFlags } from './hooks/useMediaFlags';
+import { useMediaFlags } from './hooks/media/useMediaFlags';
 import { OrderMotionBridge } from './order/OrderMotionBridge';
 import { OrderProvider } from './order/OrderProvider';
 import { SceneNodesProvider, useSceneNodesValue } from './scene/sceneNodes';
-import { useSceneMotion, type SceneMotionConfig } from './scene/useSceneMotion';
+import { useSceneMotion, type SceneMotionConfig } from './hooks/scene/useSceneMotion';
 
 const TRUTHY = new Set(['', '1', 'true', 'on', 'yes']);
 const FALSY = new Set(['0', 'false', 'off', 'no']);
