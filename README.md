@@ -2,27 +2,27 @@
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev         
 npm run build        # tsc -b && vite build
 npm run typecheck    # tsc -b
 npm run lint         # oxlint
 ```
 
-## How it works
+## How it works and Which slides I've implemented
 
 The page is one long scroll with five scenes. Most of the motion is *scrubbed* —
 tied to scroll position rather than played on a timer.
 
 1. **Preloader** — a Lottie burger and a fake progress bar, exiting through a
    split curtain and a dive-through-water transition.
-2. **Hero** (`440vh`, sticky stage) — the headline clears out, a burst wipes in,
+2. **Hero**  — the headline clears out, a burst wipes in,
    the product name lands, and the patty lifts off the plate into an
    "advertisement" pose.
-3. **Menu** (height computed at runtime) — vertical scroll scrubs the board
-   sideways. The hero patty flies out of its pose and lands in the first card.
+3. **Menu**  — vertical scroll scrubs the board
+   sideways. The hero patty flies out of its pose and lands in the menu board's first card.
 4. **Sides / Checkout** — cards reveal on intersection and tilt toward the
    pointer. Whatever is in the order tray flies into the register and prints as
-   a receipt.
+   a receipt. When click "Place Order" button, stamp "PAID".
 5. **Find us** — the shop settles into frame and the address card flips to a
    thank-you. Hitting the bottom loops you back to the top through another dive,
    so the page never ends.
@@ -33,7 +33,7 @@ tied to scroll position rather than played on a timer.
 src/
 ├─ motion.ts               Every timing and distance, lifted from the design source
 ├─ types.ts                Product shapes
-├─ data/menu.ts            The nine patties and five sides, with their image imports
+├─ constants/menu.ts            The nine patties and five sides, with their image imports
 ├─ order/                  Order state: reducer, selectors, context, add-to-order handler
 ├─ scene/
 │  ├─ gsapSetup.ts         Plugin registration and the design's two signature eases
@@ -45,37 +45,57 @@ src/
 ```
 Order state is ordinary React (`useReducer` + context) and re-renders normally.
 
+### Libraries chosen and why
+Loading animation: used the lottie file ,the preloader burger. A vector loop at that complexity is smaller and sharper as Lottie than as a sprite sheet
+or a video.
+
+Scroll Trigger animation: I used the GSAP lib and plugins(ScrollTrigger, ScrollToPlugin, CustomEase) over FramerMotion which is excellent for component
+enter/exit, but this page's motion is one continuous scroll-driven scene
+rather than per-component state transitions.
+
+
+### Approach to animation, smooth scroll, and responsiveness
+
+GSAP — everything scroll-bound or measured, all in `useSceneMotion.ts`: eight scrubbed timelines, preloader, hero entrance, three once: true reveals, the two cross-section handoffs, parallax, bubble cursor, receipt print.
+
 ### Performance
 
-Scroll work is kept off the layout path. Every box the per-frame paints need —
-the tray's resting rect, the register's document offset, the Classic disc's
-pinned position — is measured once in `measure()` on ScrollTrigger's
-`refreshInit`, so no frame reads `getBoundingClientRect`. The frames themselves
-write only `transform`, `opacity` and `clip-path`, through `gsap.quickSetter`
-rather than allocating a tween per call. The flying patty is scaled about its
-centre rather than resized, since `width` is a layout property.
+- GSAP handles the motion CSS can't: animations whose start and end points only exist once the page has laid out — in this code : the patty flying from the hero into a menu card, the tray landing in the register — plus anything tied to scroll position instead of a timer. ScrollTrigger drives that scrubbing and gives one place to re-measure on resize, which keeps layout reads out of the per-frame code.
+- Image files are in WebP, which took 10.5 MB of PNG down to 0.81 MB (about 92% smaller).
+- The hero backdrop loads eagerly with `fetchpriority="high"` since it's the first thing on screen, and the section photos and side thumbnails are loading="lazy". The nine menu discs are the exception: they sit in a track that scrubs sideways, so the browser would judge them off-screen and pop them in mid-slide.
 
-Art is WebP (10.5 MB of PNG became 0.81 MB, ~92% smaller). Only the hero
-backdrop is eager, with `fetchpriority="high"`; the four section photographs and
-the side thumbnails are `loading="lazy"`. The nine menu discs are deliberately
-*not* lazy — they sit in a horizontally-scrubbed track, so the viewport
-intersection test would pop them in mid-slide.
+- The preloader waits for real decoding. The readout counts to 90 on a timer, then
+holds until every eager image has loaded, with an 8 second cap so a broken image
+can't leave you stuck. if succeeds after the cap 8s, hero, image pops in + ScrollTrigger.refresh().
 
-The preloader gates on real decoding: its timer runs the readout to 90 and then
-waits for every eager image, capped at 8s so a broken asset can never trap you.
+- Order state has one subscriber near the leaves (`OrderMotionBridge`). Adding an
+item re-renders the tray and the receipt, not the whole page.
 
-Order state has exactly one subscriber near the leaves (`OrderMotionBridge`), so
-adding an item re-renders the tray and the receipt rather than the whole page.
+- `will-change` is set by GSAP lifecyle, because each promoted layer costs real memory — around 12 MB for a full-viewport element on mobile. It goes on when an animation starts and comes off when it ends, except on the marquee and bubble cursor, which never stop.
 
-`will-change` is driven by the GSAP lifecycle rather than declared in the markup.
-Each promoted element holds a texture of width x height x 4 bytes x dpr², so a
-full-viewport layer costs ~12 MB on a 3x phone and the menu track ~35 MB. The
-hint is applied in a trigger's `onToggle` or a tween's `onStart`, and dropped
-again on `onComplete` or when the section goes inactive. Only two elements keep
-it permanently: the marquee, which never stops, and the bubble cursor, which
-follows every mousemove.
+### Assumptions made
 
-### Accessibility and motion
+-  There is no backend and
+  nothing is persisted. Order state lives in memory and resets on reload,
+  checkout doesn't charge anything.
+-  The Krusty Krab is a portfolio piece, not something shippable.
+- Everything is either mobile or desktop. Tablets
+  get the desktop layout. Mobile mostly reuses the desktop scenes with
+  lighter effect counts and a shorter menu run, with one real exception: the
+  patty flies to the centre of the screen rather than into the first menu card,
+  since the card is too small to land in on a phone.
+- **Scrolling is the only navigation.** Anchors scroll instead of routing, so
+  there is no URL state and no way to link to a section. Reaching the bottom
+  loops back to the top, so the page has no end on purpose.
+
+- **Pointer devices get extras, touch gets the base experience.** The bubble
+  cursor and card tilt are behind `hover: hover` and `pointer: fine`. Touch
+  users get the same scenes without them, and that was treated as acceptable
+  rather than something needing a touch equivalent.
+- **Fonts load from Google Fonts.** Lilita One and Nunito come from a CDN with
+  `display=swap`, so the first paint can show a fallback face.
+
+## Accessibility and motion
 
 `prefers-reduced-motion: reduce` disables every CSS animation and short-circuits
 the engine: it sets the finished state of every entrance, builds no ScrollTriggers
