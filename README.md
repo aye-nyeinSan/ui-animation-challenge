@@ -1,5 +1,10 @@
 # The Krusty Krab (landing page)
 
+Demo: [https://ui-animation-challenge-sage.vercel.app/](https://ui-animation-challenge-sage.vercel.app/)
+
+Repo: [https://ui-animation-challenge-sage.vercel.app/](https://github.com/aye-nyeinSan/ui-animation-challenge/)
+### How to Setup
+
 ```bash
 npm install
 npm run dev
