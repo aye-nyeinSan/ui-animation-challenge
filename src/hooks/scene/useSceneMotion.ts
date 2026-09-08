@@ -100,6 +100,9 @@ export function useSceneMotion({
       }
 
       function measure() {
+        const scroller = ScrollTrigger.getScrollFunc(window) as { rec?: number };
+        if (typeof scroller.rec === 'number') scroller.rec = window.scrollY;
+
         const isMobile = window.matchMedia(MOBILE_QUERY).matches;
         layout.viewport = { width: window.innerWidth, height: window.innerHeight };
         const bg = get('heroBg') as HTMLImageElement | undefined;
@@ -529,8 +532,11 @@ export function useSceneMotion({
 
         const paintReceipt = (progress: number) => {
           lastProgress = progress;
-          const measurable = layout.register.height > 0 && layout.viewport.height > 0;
-          const cardTop = layout.register.docTop - window.scrollY;
+          const vh = layout.viewport.height;
+          const measurable = layout.register.height > 0 && vh > 0;
+          // Trigger spans card-top-at-viewport-bottom → card-centre-at-viewport-centre, so the
+          // card's position follows from progress (window.scrollY is 0 mid-refresh).
+          const cardTop = vh - (progress * (vh + layout.register.height)) / 2;
 
           if (!hasOpenOrderRef.current || !measurable) {
             setTray({
@@ -777,19 +783,32 @@ export function useSceneMotion({
           const classicImg = get('classicImg');
           const landFraction = isMobile ? MOTION.handoff.landAtMobile : MOTION.handoff.landAt;
 
+          type HandoffPhase = 'idle' | 'flying' | 'landed';
+          let phase: HandoffPhase = 'idle';
+
           const settle = (landed: boolean) => {
             gsap.set(flyer, { opacity: 0 });
-            gsap.to(heroBurger ?? [], { opacity: landed ? 0 : 1, duration: 0.2 });
-            gsap.to(classicImg ?? [], { opacity: landed ? 1 : 0, duration: 0.35 });
+            gsap.to(heroBurger ?? [], { opacity: landed ? 0 : 1, duration: 0.2, overwrite: 'auto' });
+            gsap.to(classicImg ?? [], { opacity: landed ? 1 : 0, duration: 0.35, overwrite: 'auto' });
+          };
+          const setPhase = (next: HandoffPhase) => {
+            if (phase === next) return;
+            phase = next;
+            if (next !== 'flying') settle(next === 'landed');
           };
           const setFlyer = gsap.quickSetter(flyer, 'css') as (v: object) => void;
 
-          const paintHandoff = () => {
+          const paintHandoff = (self: ScrollTrigger) => {
+            if (self.progress <= 0) return setPhase('idle');
+            if (self.progress >= 1) return setPhase('landed');
+            setPhase('flying');
+
+            const scroll = self.start + (self.end - self.start) * self.progress;
             const start = layout.menuTop;
             const end = start + layout.menuRun * landFraction;
-            const p = gsap.utils.clamp(0, 1, (window.scrollY - start) / Math.max(1, end - start));
+            const p = gsap.utils.clamp(0, 1, (scroll - start) / Math.max(1, end - start));
             const eased = gsap.parseEase(EASE.scrub)(p);
-            const targetX = isMobile ? layout.viewport.width / 2 : layout.disc.x;
+            const targetX = layout.viewport.width / 2;
             const targetY = isMobile ? layout.viewport.height / 2 : layout.disc.y;
             const targetW = isMobile
               ? Math.min(layout.viewport.width * 0.52, layout.viewport.height * 0.34, 260)
@@ -811,6 +830,10 @@ export function useSceneMotion({
             gsap.set([heroBurger, classicImg].filter(Boolean) as HTMLElement[], { opacity: 0 });
           };
 
+          // Reset to idle first: creating the trigger runs its initial update synchronously,
+          // which picks the real phase when the page is already scrolled past this range.
+          let live = false;
+          settle(false);
           ScrollTrigger.create({
             id: 'patty-handoff',
             onToggle: (self) => layerHint([flyer], self.isActive ? LAYER.fading : 'auto'),
@@ -824,12 +847,12 @@ export function useSceneMotion({
             onEnter: paintHandoff,
             onEnterBack: paintHandoff,
             onLeave: () => {
-              settle(true);
-              firePuff(isMobile ? flyer : get('disc0'));
+              setPhase('landed');
+              if (live) firePuff(isMobile ? flyer : get('disc0'));
             },
-            onLeaveBack: () => settle(false),
+            onLeaveBack: () => setPhase('idle'),
           });
-          settle(false);
+          live = true;
         }
       });
 
